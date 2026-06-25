@@ -115,17 +115,17 @@
     <p>Auto-fetches daily Fed data. Leading signals drive the regime; slow signals confirm.</p>
   </header>
 
-  <!-- API KEY SETUP -->
+  <!-- WORKER URL SETUP -->
   <div class="keybar">
     <div class="row">
       <div class="col">
-        <label>FRED API key (free — stored only in this browser)</label>
-        <input type="text" id="apikey" placeholder="paste your 32-character FRED key">
+        <label>Your Cloudflare Worker URL (your key stays hidden inside it)</label>
+        <input type="text" id="workerurl" placeholder="https://fred-proxy.YOURNAME.workers.dev">
       </div>
-      <button class="btn" onclick="saveKeyAndFetch()">Save &amp; Fetch</button>
+      <button class="btn" onclick="saveAndFetch()">Save &amp; Fetch</button>
       <button class="btn btn-sec" onclick="fetchAll()">Refresh now</button>
     </div>
-    <div class="keyhint">No key yet? Get one free in 30 seconds at <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank">fred.stlouisfed.org/docs/api/api_key.html</a>. It's read-only access to public economic data.</div>
+    <div class="keyhint">This points at the Worker you deployed (see README). The Worker holds your FRED key as a secret — nothing sensitive lives in this page. To bake the URL in permanently, set <code>WORKER_URL</code> in the script below.</div>
   </div>
 
   <div class="status" id="status"></div>
@@ -134,7 +134,7 @@
   <div class="master-signal" id="master">
     <div class="master-label">Composite Regime Signal</div>
     <div class="master-verdict" id="master-verdict">—</div>
-    <div class="master-sub" id="master-sub">Save your key to auto-load</div>
+    <div class="master-sub" id="master-sub">Enter your Worker URL to auto-load</div>
   </div>
 
   <!-- DAILY BAND -->
@@ -284,17 +284,24 @@ var SCORE = {green:1, amber:0, red:-1};
 function markerPos(v,min,max){ if(isNaN(v))return 50; var p=(v-min)/(max-min)*100; return Math.min(98,Math.max(2,p)); }
 function setLight(id,c){ document.getElementById(id).className='light '+c; }
 
-// ---- FRED fetch ----
-// FRED supports CORS, so the browser can call it directly with the key.
-function fredLatest(series, key){
-  var url = 'https://api.stlouisfed.org/fred/series/observations'
-    + '?series_id=' + series
-    + '&api_key=' + key
-    + '&file_type=json&sort_order=desc&limit=5';
+// ---- Worker proxy fetch ----
+// Optionally hard-code your Worker URL here to skip entering it each time:
+var WORKER_URL = "";  // e.g. "https://fred-proxy.yourname.workers.dev"
+
+function getWorker(){
+  var v = document.getElementById('workerurl').value.trim();
+  return v || WORKER_URL;
+}
+
+// Calls your Worker, which proxies FRED and returns the same JSON shape.
+function fredLatest(series, worker){
+  var base = worker.replace(/\/+$/,''); // strip trailing slash
+  var url = base + '/?series=' + encodeURIComponent(series);
   return fetch(url).then(function(r){
-    if(!r.ok) throw new Error('FRED returned ' + r.status);
+    if(!r.ok) throw new Error('Worker returned ' + r.status);
     return r.json();
   }).then(function(j){
+    if(j.error) throw new Error(j.error);
     var obs = j.observations || [];
     for(var i=0;i<obs.length;i++){
       if(obs[i].value !== '.' && obs[i].value !== '' ){
@@ -305,13 +312,7 @@ function fredLatest(series, key){
   });
 }
 
-function getKey(){ return document.getElementById('apikey').value.trim(); }
-
-function saveKeyAndFetch(){
-  var k = getKey();
-  if(k){ try{ window._fredKey = k; }catch(e){} }
-  fetchAll();
-}
+function saveAndFetch(){ fetchAll(); }
 
 function setStatus(msg, cls){
   var s = document.getElementById('status');
@@ -319,32 +320,32 @@ function setStatus(msg, cls){
 }
 
 function fetchAll(){
-  var key = getKey();
-  if(!key){ setStatus('Enter your FRED API key first.', 'err'); return; }
-  setStatus('Fetching latest data from FRED…', 'loading');
+  var worker = getWorker();
+  if(!worker){ setStatus('Enter your Cloudflare Worker URL first.', 'err'); return; }
+  setStatus('Fetching latest data via your Worker…', 'loading');
 
   var jobs = [
-    fredLatest('DFII10', key).then(function(d){
+    fredLatest('DFII10', worker).then(function(d){
       document.getElementById('val-real').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
       document.getElementById('date-real').textContent = 'as of ' + d.date;
       setLight('light-real', zReal(d.value));
       document.getElementById('mark-real').style.left = markerPos(d.value,0.5,2.6)+'%';
       return zReal(d.value);
     }),
-    fredLatest('DGS2', key).then(function(d){
+    fredLatest('DGS2', worker).then(function(d){
       document.getElementById('val-2y').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
       document.getElementById('date-2y').textContent = 'as of ' + d.date;
       setLight('light-2y', z2y(d.value));
       document.getElementById('mark-2y').style.left = markerPos(d.value,3.8,4.6)+'%';
       return z2y(d.value);
     }),
-    fredLatest('DGS10', key).then(function(d){
+    fredLatest('DGS10', worker).then(function(d){
       document.getElementById('val-10y').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
       document.getElementById('date-10y').textContent = 'as of ' + d.date;
       setLight('light-10y','grey');
       return null;
     }),
-    fredLatest('T10YIE', key).then(function(d){
+    fredLatest('T10YIE', worker).then(function(d){
       document.getElementById('val-be').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
       document.getElementById('date-be').textContent = 'as of ' + d.date;
       setLight('light-be','grey');
@@ -355,7 +356,7 @@ function fetchAll(){
   Promise.allSettled(jobs).then(function(results){
     var anyErr = results.some(function(r){ return r.status === 'rejected'; });
     if(anyErr){
-      setStatus('Some series failed — check your key is valid (and that you are online).', 'err');
+      setStatus('Some series failed — check your Worker URL is correct and deployed.', 'err');
     } else {
       setStatus('Live data loaded.', 'ok');
       document.getElementById('updated').textContent = 'Last fetched: ' + new Date().toLocaleString();
@@ -416,9 +417,10 @@ function computeComposite(){
   });
 });
 
-// auto-fetch on load if a key was pre-filled in the HTML (optional)
+// auto-fetch on load if a Worker URL is baked in
 window.addEventListener('load', function(){
-  if(getKey()){ fetchAll(); }
+  if(WORKER_URL){ document.getElementById('workerurl').value = WORKER_URL; }
+  if(getWorker()){ fetchAll(); }
 });
 </script>
 </body>
