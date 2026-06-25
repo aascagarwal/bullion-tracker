@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metals Macro Monitor — Live</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0e1116; color: #e6e6e6; min-height: 100vh; padding: 1.25rem 0.9rem;
+  }
+  .page { max-width: 860px; margin: 0 auto; }
+  header { margin-bottom: 1rem; }
+  header h1 { font-size: 21px; font-weight: 600; color: #fff; }
+  header p { font-size: 13px; color: #8b949e; margin-top: 4px; }
+
+  /* API key setup row */
+  .keybar {
+    background: #161b22; border: 1px solid #21262d; border-radius: 10px;
+    padding: 0.9rem 1rem; margin-bottom: 14px;
+  }
+  .keybar label { font-size: 12px; color: #8b949e; display: block; margin-bottom: 6px; }
+  .keybar input {
+    background: #0d1117; border: 1px solid #30363d; color: #e6e6e6;
+    border-radius: 6px; padding: 8px 10px; font-size: 13px; width: 100%;
+    font-family: monospace;
+  }
+  .keybar input:focus { outline: none; border-color: #58a6ff; }
+  .keybar .row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+  .keybar .col { flex: 1; min-width: 200px; }
+  .btn {
+    background: #238636; color: #fff; border: none; border-radius: 6px;
+    padding: 9px 16px; font-size: 13px; cursor: pointer; white-space: nowrap;
+  }
+  .btn:hover { background: #2ea043; }
+  .btn-sec { background: #21262d; color: #c9d1d9; }
+  .btn-sec:hover { background: #30363d; }
+  .keyhint { font-size: 11px; color: #6e7681; margin-top: 6px; }
+  .keyhint a { color: #58a6ff; text-decoration: none; }
+
+  .master-signal {
+    border-radius: 14px; padding: 1.1rem 1.5rem; margin-bottom: 16px;
+    border: 1px solid #2a2f3a; text-align: center; transition: all .3s;
+  }
+  .master-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8b949e; margin-bottom: 6px; }
+  .master-verdict { font-size: 25px; font-weight: 700; }
+  .master-sub { font-size: 13px; color: #8b949e; margin-top: 6px; }
+
+  .freq-band { margin-bottom: 20px; }
+  .band-title {
+    font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: #6e7681; margin-bottom: 10px; padding-left: 2px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .band-pill { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: #1a2030; color: #58a6ff; }
+  .band-pill.slow { background: #2a2018; color: #d29922; }
+
+  .card {
+    background: #161b22; border: 1px solid #21262d; border-radius: 12px;
+    padding: 1rem 1.25rem; margin-bottom: 10px;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .card-name { font-size: 15px; font-weight: 600; color: #fff; }
+  .card-id { font-size: 11px; color: #6e7681; font-family: monospace; margin-top: 2px; }
+  .light { width: 14px; height: 14px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+  .green { background: #3fb950; box-shadow: 0 0 8px #3fb95066; }
+  .amber { background: #d29922; box-shadow: 0 0 8px #d2992266; }
+  .red   { background: #f85149; box-shadow: 0 0 8px #f8514966; }
+  .grey  { background: #484f58; }
+
+  .live-val { font-size: 22px; font-weight: 700; color: #fff; font-family: monospace; }
+  .live-val .unit { font-size: 13px; color: #8b949e; font-weight: 400; }
+  .live-date { font-size: 11px; color: #6e7681; margin-top: 2px; }
+  .auto-tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #0d2818; color: #3fb950; margin-left: 6px; }
+  .manual-tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #2a2018; color: #d29922; margin-left: 6px; }
+
+  .input-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+  .input-row label { font-size: 12px; color: #8b949e; width: 110px; flex-shrink: 0; }
+  .input-row input, .input-row select {
+    background: #0d1117; border: 1px solid #30363d; color: #e6e6e6;
+    border-radius: 6px; padding: 6px 10px; font-size: 14px; width: 110px; font-family: monospace;
+  }
+  .input-row input:focus { outline: none; border-color: #58a6ff; }
+
+  .threshold-bar { margin-top: 10px; }
+  .threshold-track { height: 8px; background: #21262d; border-radius: 4px; position: relative; }
+  .threshold-zones { display: flex; height: 100%; border-radius: 4px; overflow: hidden; }
+  .zone-green { background: #3fb95044; }
+  .zone-amber { background: #d2992244; }
+  .zone-red   { background: #f8514944; }
+  .threshold-marker {
+    position: absolute; top: -3px; width: 3px; height: 14px; background: #fff;
+    border-radius: 2px; transform: translateX(-50%); transition: left .3s;
+  }
+  .threshold-labels { display: flex; justify-content: space-between; font-size: 10px; color: #6e7681; margin-top: 4px; }
+  .signal-text { font-size: 12.5px; color: #8b949e; margin-top: 10px; line-height: 1.5; }
+  .signal-text strong { color: #c9d1d9; }
+  .links { font-size: 11px; color: #6e7681; margin-top: 6px; }
+  .links a { color: #58a6ff; text-decoration: none; }
+
+  .status { font-size: 12px; text-align: center; margin: 10px 0; min-height: 18px; }
+  .status.loading { color: #d29922; }
+  .status.ok { color: #3fb950; }
+  .status.err { color: #f85149; }
+  .updated { font-size: 11px; color: #6e7681; text-align: center; margin-top: 16px; }
+  .disclaimer { font-size: 11px; color: #4d545c; text-align: center; margin-top: 8px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Metals Macro Monitor — Live</h1>
+    <p>Auto-fetches daily Fed data. Leading signals drive the regime; slow signals confirm.</p>
+  </header>
+
+  <!-- API KEY SETUP -->
+  <div class="keybar">
+    <div class="row">
+      <div class="col">
+        <label>FRED API key (free — stored only in this browser)</label>
+        <input type="text" id="apikey" placeholder="paste your 32-character FRED key">
+      </div>
+      <button class="btn" onclick="saveKeyAndFetch()">Save &amp; Fetch</button>
+      <button class="btn btn-sec" onclick="fetchAll()">Refresh now</button>
+    </div>
+    <div class="keyhint">No key yet? Get one free in 30 seconds at <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank">fred.stlouisfed.org/docs/api/api_key.html</a>. It's read-only access to public economic data.</div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <!-- MASTER SIGNAL -->
+  <div class="master-signal" id="master">
+    <div class="master-label">Composite Regime Signal</div>
+    <div class="master-verdict" id="master-verdict">—</div>
+    <div class="master-sub" id="master-sub">Save your key to auto-load</div>
+  </div>
+
+  <!-- DAILY BAND -->
+  <div class="freq-band">
+    <div class="band-title"><span class="band-pill">DAILY · auto-fetched from FRED</span> Leading signals</div>
+
+    <!-- Real yield -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-name">10Y Real Yield (TIPS) <span class="auto-tag">AUTO</span></div>
+          <div class="card-id">FRED: DFII10</div>
+        </div>
+        <div class="light grey" id="light-real"></div>
+      </div>
+      <div class="live-val" id="val-real">—<span class="unit">%</span></div>
+      <div class="live-date" id="date-real"></div>
+      <div class="threshold-bar">
+        <div class="threshold-track">
+          <div class="threshold-zones"><div class="zone-green" style="width:40%"></div><div class="zone-amber" style="width:25%"></div><div class="zone-red" style="width:35%"></div></div>
+          <div class="threshold-marker" id="mark-real" style="left:50%"></div>
+        </div>
+        <div class="threshold-labels"><span>0.5%</span><span>1.5%</span><span>2.0%</span><span>2.6%+</span></div>
+      </div>
+      <div class="signal-text"><strong>The master switch.</strong> Below ~1.5% supportive, below 1.0% strongly bullish, above 2.0% structural headwind. The sustained roll-over is the bottom trigger.</div>
+    </div>
+
+    <!-- 2Y -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-name">2Y Treasury Yield <span class="auto-tag">AUTO</span></div>
+          <div class="card-id">FRED: DGS2 · Fed-hike proxy</div>
+        </div>
+        <div class="light grey" id="light-2y"></div>
+      </div>
+      <div class="live-val" id="val-2y">—<span class="unit">%</span></div>
+      <div class="live-date" id="date-2y"></div>
+      <div class="threshold-bar">
+        <div class="threshold-track">
+          <div class="threshold-zones"><div class="zone-green" style="width:45%"></div><div class="zone-amber" style="width:20%"></div><div class="zone-red" style="width:35%"></div></div>
+          <div class="threshold-marker" id="mark-2y" style="left:50%"></div>
+        </div>
+        <div class="threshold-labels"><span>3.8%</span><span>4.2%</span><span>4.4%</span><span>4.6%+</span></div>
+      </div>
+      <div class="signal-text"><strong>Purest read on Fed-hike expectations.</strong> When it peaks and rolls over, the hike narrative is breaking — that front-runs the metals bottom.</div>
+    </div>
+
+    <!-- 10Y nominal (context) -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-name">10Y Nominal Yield <span class="auto-tag">AUTO</span></div>
+          <div class="card-id">FRED: DGS10 · context</div>
+        </div>
+        <div class="light grey" id="light-10y"></div>
+      </div>
+      <div class="live-val" id="val-10y">—<span class="unit">%</span></div>
+      <div class="live-date" id="date-10y"></div>
+      <div class="signal-text">Context only — not scored. Watch the 10Y vs the 2Y (curve) and vs the real yield (implied breakeven inflation).</div>
+    </div>
+
+    <!-- Breakeven inflation (derived) -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-name">10Y Breakeven Inflation <span class="auto-tag">AUTO</span></div>
+          <div class="card-id">FRED: T10YIE</div>
+        </div>
+        <div class="light grey" id="light-be"></div>
+      </div>
+      <div class="live-val" id="val-be">—<span class="unit">%</span></div>
+      <div class="live-date" id="date-be"></div>
+      <div class="signal-text"><strong>Rising breakeven + falling real yield = the ideal metals setup.</strong> If inflation expectations rise while real yields fall, that's the most reliable gold tailwind.</div>
+    </div>
+
+    <!-- Gold/Silver ratio (manual) -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-name">Gold / Silver Ratio <span class="manual-tag">MANUAL</span></div>
+          <div class="card-id">enter spot prices</div>
+        </div>
+        <div class="light grey" id="light-ratio"></div>
+      </div>
+      <div class="input-row"><label>Gold spot $</label><input type="number" id="in-gold" step="1" placeholder="4016"></div>
+      <div class="input-row"><label>Silver spot $</label><input type="number" id="in-silver" step="0.01" placeholder="61"></div>
+      <div class="input-row"><label>Ratio</label><span class="live-val" id="ratio-val" style="font-size:18px">—</span></div>
+      <div class="threshold-bar">
+        <div class="threshold-track">
+          <div class="threshold-zones"><div class="zone-green" style="width:45%"></div><div class="zone-amber" style="width:20%"></div><div class="zone-red" style="width:35%"></div></div>
+          <div class="threshold-marker" id="mark-ratio" style="left:50%"></div>
+        </div>
+        <div class="threshold-labels"><span>&lt;55</span><span>60</span><span>65</span><span>75+</span></div>
+      </div>
+      <div class="signal-text"><strong>Best internal bottom-confirm.</strong> Falling ratio = silver outperforming = risk appetite returning. Below ~60 with silver leading confirms the uptrend handoff. (Spot isn't free on FRED, so enter manually or wire your own feed.)</div>
+    </div>
+  </div>
+
+  <!-- SLOW BAND -->
+  <div class="freq-band">
+    <div class="band-title"><span class="band-pill slow">MONTHLY / QUARTERLY · manual confirmation</span></div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-name">Foreign Official Treasury Holdings <span class="manual-tag">MANUAL</span></div>
+          <div class="card-id">Treasury TIC — monthly, ~6wk lag</div>
+        </div>
+        <div class="light grey" id="light-tic"></div>
+      </div>
+      <div class="input-row"><label>Direction</label>
+        <select id="in-tic"><option value="">— select —</option><option value="green">Share rising / stable</option><option value="amber">Share slowly falling</option><option value="red">Share falling fast</option></select>
+      </div>
+      <div class="signal-text">Falling foreign share = the de-recycling thesis going live. Confirms the daily band, doesn't trigger.</div>
+      <div class="links">Source: <a href="https://ticdata.treasury.gov/" target="_blank">ticdata.treasury.gov</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-name">Central Bank Gold % of Reserves <span class="manual-tag">MANUAL</span></div>
+          <div class="card-id">WGC — quarterly</div>
+        </div>
+        <div class="light grey" id="light-cbgold"></div>
+      </div>
+      <div class="input-row"><label>Direction</label>
+        <select id="in-cbgold"><option value="">— select —</option><option value="green">Accumulation accelerating</option><option value="amber">Accumulation steady</option><option value="red">Accumulation slowing</option></select>
+      </div>
+      <div class="signal-text">Sustained accumulation = structural floor under gold (sovereign bid), independent of rates.</div>
+      <div class="links">Source: <a href="https://www.gold.org/goldhub" target="_blank">gold.org/goldhub</a></div>
+    </div>
+  </div>
+
+  <div class="updated" id="updated"></div>
+  <div class="disclaimer">For reference only — not investment advice. Data via FRED (St. Louis Fed). Daily series update each business day with a 1-day lag.</div>
+
+</div>
+
+<script>
+// ---- thresholds ----
+function zReal(v){ if(isNaN(v))return'grey'; if(v<1.5)return'green'; if(v<2.0)return'amber'; return'red'; }
+function z2y(v){ if(isNaN(v))return'grey'; if(v<4.2)return'green'; if(v<4.4)return'amber'; return'red'; }
+function zRatio(v){ if(isNaN(v)||!isFinite(v))return'grey'; if(v<60)return'green'; if(v<65)return'amber'; return'red'; }
+var SCORE = {green:1, amber:0, red:-1};
+
+function markerPos(v,min,max){ if(isNaN(v))return 50; var p=(v-min)/(max-min)*100; return Math.min(98,Math.max(2,p)); }
+function setLight(id,c){ document.getElementById(id).className='light '+c; }
+
+// ---- FRED fetch ----
+// FRED supports CORS, so the browser can call it directly with the key.
+function fredLatest(series, key){
+  var url = 'https://api.stlouisfed.org/fred/series/observations'
+    + '?series_id=' + series
+    + '&api_key=' + key
+    + '&file_type=json&sort_order=desc&limit=5';
+  return fetch(url).then(function(r){
+    if(!r.ok) throw new Error('FRED returned ' + r.status);
+    return r.json();
+  }).then(function(j){
+    var obs = j.observations || [];
+    for(var i=0;i<obs.length;i++){
+      if(obs[i].value !== '.' && obs[i].value !== '' ){
+        return { value: parseFloat(obs[i].value), date: obs[i].date };
+      }
+    }
+    throw new Error('no valid obs for ' + series);
+  });
+}
+
+function getKey(){ return document.getElementById('apikey').value.trim(); }
+
+function saveKeyAndFetch(){
+  var k = getKey();
+  if(k){ try{ window._fredKey = k; }catch(e){} }
+  fetchAll();
+}
+
+function setStatus(msg, cls){
+  var s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status ' + (cls||'');
+}
+
+function fetchAll(){
+  var key = getKey();
+  if(!key){ setStatus('Enter your FRED API key first.', 'err'); return; }
+  setStatus('Fetching latest data from FRED…', 'loading');
+
+  var jobs = [
+    fredLatest('DFII10', key).then(function(d){
+      document.getElementById('val-real').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
+      document.getElementById('date-real').textContent = 'as of ' + d.date;
+      setLight('light-real', zReal(d.value));
+      document.getElementById('mark-real').style.left = markerPos(d.value,0.5,2.6)+'%';
+      return zReal(d.value);
+    }),
+    fredLatest('DGS2', key).then(function(d){
+      document.getElementById('val-2y').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
+      document.getElementById('date-2y').textContent = 'as of ' + d.date;
+      setLight('light-2y', z2y(d.value));
+      document.getElementById('mark-2y').style.left = markerPos(d.value,3.8,4.6)+'%';
+      return z2y(d.value);
+    }),
+    fredLatest('DGS10', key).then(function(d){
+      document.getElementById('val-10y').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
+      document.getElementById('date-10y').textContent = 'as of ' + d.date;
+      setLight('light-10y','grey');
+      return null;
+    }),
+    fredLatest('T10YIE', key).then(function(d){
+      document.getElementById('val-be').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
+      document.getElementById('date-be').textContent = 'as of ' + d.date;
+      setLight('light-be','grey');
+      return null;
+    })
+  ];
+
+  Promise.allSettled(jobs).then(function(results){
+    var anyErr = results.some(function(r){ return r.status === 'rejected'; });
+    if(anyErr){
+      setStatus('Some series failed — check your key is valid (and that you are online).', 'err');
+    } else {
+      setStatus('Live data loaded.', 'ok');
+      document.getElementById('updated').textContent = 'Last fetched: ' + new Date().toLocaleString();
+    }
+    computeComposite();
+  });
+}
+
+function computeRatio(){
+  var g = parseFloat(document.getElementById('in-gold').value);
+  var s = parseFloat(document.getElementById('in-silver').value);
+  var r = (g && s) ? g/s : NaN;
+  document.getElementById('ratio-val').textContent = isNaN(r) ? '—' : r.toFixed(1);
+  setLight('light-ratio', zRatio(r));
+  document.getElementById('mark-ratio').style.left = markerPos(r,50,75)+'%';
+  computeComposite();
+}
+
+function computeComposite(){
+  // gather zones from the scored daily lights
+  var ids = ['light-real','light-2y','light-ratio'];
+  var zones = ids.map(function(id){
+    var c = document.getElementById(id).className.replace('light ','').trim();
+    return SCORE.hasOwnProperty(c) ? SCORE[c] : null;
+  }).filter(function(x){ return x !== null; });
+
+  var master = document.getElementById('master');
+  var verdict = document.getElementById('master-verdict');
+  var sub = document.getElementById('master-sub');
+
+  if(zones.length === 0){
+    verdict.textContent='—'; verdict.style.color='#8b949e';
+    sub.textContent='Load data to compute the regime';
+    master.style.borderColor='#2a2f3a'; master.style.background='transparent';
+    return;
+  }
+  var avg = zones.reduce(function(a,b){return a+b;},0)/zones.length;
+  if(avg >= 0.5){
+    verdict.textContent='TAILWIND BUILDING'; verdict.style.color='#3fb950';
+    sub.textContent='Daily signals net positive — regime turning supportive. Scale-in zone if confirmed on weekly closes.';
+    master.style.borderColor='#3fb95066'; master.style.background='#0d1f12';
+  } else if(avg <= -0.4){
+    verdict.textContent='HEADWIND INTACT'; verdict.style.color='#f85149';
+    sub.textContent='Daily signals net negative — rates/dollar still driving metals down. Wait for the rollover.';
+    master.style.borderColor='#f8514966'; master.style.background='#1f0d0d';
+  } else {
+    verdict.textContent='MIXED / TRANSITION'; verdict.style.color='#d29922';
+    sub.textContent='Signals diverging — regime in flux. This is where bottoms form. Real yields are the tiebreaker.';
+    master.style.borderColor='#d2992266'; master.style.background='#1f1a0d';
+  }
+}
+
+// wire manual inputs
+['in-gold','in-silver'].forEach(function(id){ document.getElementById(id).addEventListener('input', computeRatio); });
+['in-tic','in-cbgold'].forEach(function(id){
+  document.getElementById(id).addEventListener('change', function(){
+    setLight('light-'+id.split('-')[1], this.value || 'grey');
+  });
+});
+
+// auto-fetch on load if a key was pre-filled in the HTML (optional)
+window.addEventListener('load', function(){
+  if(getKey()){ fetchAll(); }
+});
+</script>
+</body>
+</html>
