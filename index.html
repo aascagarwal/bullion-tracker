@@ -3,424 +3,572 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Metals Macro Monitor — Live</title>
+<title>Metals Macro Monitor — v2</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0e1116; color: #e6e6e6; min-height: 100vh; padding: 1.25rem 0.9rem;
-  }
-  .page { max-width: 860px; margin: 0 auto; }
-  header { margin-bottom: 1rem; }
-  header h1 { font-size: 21px; font-weight: 600; color: #fff; }
-  header p { font-size: 13px; color: #8b949e; margin-top: 4px; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0e1116;color:#e6e6e6;min-height:100vh;padding:1.1rem .8rem}
+  .page{max-width:880px;margin:0 auto}
+  header h1{font-size:21px;font-weight:600;color:#fff}
+  header p{font-size:12.5px;color:#8b949e;margin-top:3px}
+  .keybar{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:.85rem 1rem;margin:14px 0}
+  .keybar label{font-size:12px;color:#8b949e;display:block;margin-bottom:6px}
+  .keybar input{background:#0d1117;border:1px solid #30363d;color:#e6e6e6;border-radius:6px;padding:8px 10px;font-size:13px;width:100%;font-family:monospace}
+  .keybar input:focus{outline:none;border-color:#58a6ff}
+  .keybar .row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+  .keybar .col{flex:1;min-width:200px}
+  .btn{background:#238636;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:#2ea043}
+  .btn-sec{background:#21262d;color:#c9d1d9}
+  .btn-sec:hover{background:#30363d}
+  .keyhint{font-size:11px;color:#6e7681;margin-top:6px}
+  .keyhint a{color:#58a6ff;text-decoration:none}
 
-  /* API key setup row */
-  .keybar {
-    background: #161b22; border: 1px solid #21262d; border-radius: 10px;
-    padding: 0.9rem 1rem; margin-bottom: 14px;
-  }
-  .keybar label { font-size: 12px; color: #8b949e; display: block; margin-bottom: 6px; }
-  .keybar input {
-    background: #0d1117; border: 1px solid #30363d; color: #e6e6e6;
-    border-radius: 6px; padding: 8px 10px; font-size: 13px; width: 100%;
-    font-family: monospace;
-  }
-  .keybar input:focus { outline: none; border-color: #58a6ff; }
-  .keybar .row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-  .keybar .col { flex: 1; min-width: 200px; }
-  .btn {
-    background: #238636; color: #fff; border: none; border-radius: 6px;
-    padding: 9px 16px; font-size: 13px; cursor: pointer; white-space: nowrap;
-  }
-  .btn:hover { background: #2ea043; }
-  .btn-sec { background: #21262d; color: #c9d1d9; }
-  .btn-sec:hover { background: #30363d; }
-  .keyhint { font-size: 11px; color: #6e7681; margin-top: 6px; }
-  .keyhint a { color: #58a6ff; text-decoration: none; }
+  .master-signal{border-radius:14px;padding:1.05rem 1.4rem;margin-bottom:16px;border:1px solid #2a2f3a;text-align:center;transition:all .3s}
+  .master-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b949e;margin-bottom:6px}
+  .master-verdict{font-size:24px;font-weight:700}
+  .master-sub{font-size:12.5px;color:#8b949e;margin-top:6px}
+  .master-detail{font-size:11.5px;color:#6e7681;margin-top:8px;line-height:1.5}
 
-  .master-signal {
-    border-radius: 14px; padding: 1.1rem 1.5rem; margin-bottom: 16px;
-    border: 1px solid #2a2f3a; text-align: center; transition: all .3s;
-  }
-  .master-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8b949e; margin-bottom: 6px; }
-  .master-verdict { font-size: 25px; font-weight: 700; }
-  .master-sub { font-size: 13px; color: #8b949e; margin-top: 6px; }
+  .freq-band{margin-bottom:18px}
+  .band-title{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#6e7681;margin-bottom:9px;padding-left:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .band-pill{font-size:10px;padding:2px 8px;border-radius:20px;background:#1a2030;color:#58a6ff}
+  .band-pill.slow{background:#2a2018;color:#d29922}
+  .band-pill.manual{background:#231a2e;color:#bc8cff}
 
-  .freq-band { margin-bottom: 20px; }
-  .band-title {
-    font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
-    color: #6e7681; margin-bottom: 10px; padding-left: 2px;
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  }
-  .band-pill { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: #1a2030; color: #58a6ff; }
-  .band-pill.slow { background: #2a2018; color: #d29922; }
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
 
-  .card {
-    background: #161b22; border: 1px solid #21262d; border-radius: 12px;
-    padding: 1rem 1.25rem; margin-bottom: 10px;
-  }
-  .card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-  .card-name { font-size: 15px; font-weight: 600; color: #fff; }
-  .card-id { font-size: 11px; color: #6e7681; font-family: monospace; margin-top: 2px; }
-  .light { width: 14px; height: 14px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
-  .green { background: #3fb950; box-shadow: 0 0 8px #3fb95066; }
-  .amber { background: #d29922; box-shadow: 0 0 8px #d2992266; }
-  .red   { background: #f85149; box-shadow: 0 0 8px #f8514966; }
-  .grey  { background: #484f58; }
+  .card{background:#161b22;border:1px solid #21262d;border-radius:11px;padding:.85rem 1rem;margin-bottom:9px}
+  .card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+  .card-name{font-size:14px;font-weight:600;color:#fff;line-height:1.25}
+  .card-id{font-size:10.5px;color:#6e7681;font-family:monospace;margin-top:2px}
+  .light{width:13px;height:13px;border-radius:50%;margin-top:3px;flex-shrink:0}
+  .green{background:#3fb950;box-shadow:0 0 7px #3fb95066}
+  .amber{background:#d29922;box-shadow:0 0 7px #d2992266}
+  .red{background:#f85149;box-shadow:0 0 7px #f8514966}
+  .grey{background:#484f58}
 
-  .live-val { font-size: 22px; font-weight: 700; color: #fff; font-family: monospace; }
-  .live-val .unit { font-size: 13px; color: #8b949e; font-weight: 400; }
-  .live-date { font-size: 11px; color: #6e7681; margin-top: 2px; }
-  .auto-tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #0d2818; color: #3fb950; margin-left: 6px; }
-  .manual-tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #2a2018; color: #d29922; margin-left: 6px; }
+  .valrow{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .live-val{font-size:21px;font-weight:700;color:#fff;font-family:monospace}
+  .live-val .unit{font-size:12px;color:#8b949e;font-weight:400}
+  .chg{font-size:12px;font-family:monospace;font-weight:600}
+  .chg.up{color:#3fb950}.chg.down{color:#f85149}.chg.flat{color:#8b949e}
+  .live-date{font-size:10.5px;color:#6e7681;margin-top:2px}
+  .tag{font-size:9.5px;padding:1px 6px;border-radius:10px;margin-left:6px}
+  .auto-tag{background:#0d2818;color:#3fb950}
+  .manual-tag{background:#2a2018;color:#d29922}
+  .ctx-tag{background:#1a2030;color:#58a6ff}
 
-  .input-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
-  .input-row label { font-size: 12px; color: #8b949e; width: 110px; flex-shrink: 0; }
-  .input-row input, .input-row select {
-    background: #0d1117; border: 1px solid #30363d; color: #e6e6e6;
-    border-radius: 6px; padding: 6px 10px; font-size: 14px; width: 110px; font-family: monospace;
-  }
-  .input-row input:focus { outline: none; border-color: #58a6ff; }
+  .input-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+  .input-row label{font-size:11.5px;color:#8b949e;width:96px;flex-shrink:0}
+  .input-row input,.input-row select{background:#0d1117;border:1px solid #30363d;color:#e6e6e6;border-radius:6px;padding:5px 9px;font-size:13px;width:100px;font-family:monospace}
+  .input-row input:focus{outline:none;border-color:#58a6ff}
 
-  .threshold-bar { margin-top: 10px; }
-  .threshold-track { height: 8px; background: #21262d; border-radius: 4px; position: relative; }
-  .threshold-zones { display: flex; height: 100%; border-radius: 4px; overflow: hidden; }
-  .zone-green { background: #3fb95044; }
-  .zone-amber { background: #d2992244; }
-  .zone-red   { background: #f8514944; }
-  .threshold-marker {
-    position: absolute; top: -3px; width: 3px; height: 14px; background: #fff;
-    border-radius: 2px; transform: translateX(-50%); transition: left .3s;
-  }
-  .threshold-labels { display: flex; justify-content: space-between; font-size: 10px; color: #6e7681; margin-top: 4px; }
-  .signal-text { font-size: 12.5px; color: #8b949e; margin-top: 10px; line-height: 1.5; }
-  .signal-text strong { color: #c9d1d9; }
-  .links { font-size: 11px; color: #6e7681; margin-top: 6px; }
-  .links a { color: #58a6ff; text-decoration: none; }
+  .tbar{margin-top:8px}
+  .ttrack{height:7px;background:#21262d;border-radius:4px;position:relative}
+  .tzones{display:flex;height:100%;border-radius:4px;overflow:hidden}
+  .zg{background:#3fb95044}.za{background:#d2992244}.zr{background:#f8514944}
+  .tmark{position:absolute;top:-3px;width:3px;height:13px;background:#fff;border-radius:2px;transform:translateX(-50%);transition:left .3s}
+  .tlabels{display:flex;justify-content:space-between;font-size:9.5px;color:#6e7681;margin-top:3px}
+  .sig{font-size:11.5px;color:#8b949e;margin-top:8px;line-height:1.45}
+  .sig strong{color:#c9d1d9}
+  .links{font-size:10.5px;color:#6e7681;margin-top:5px}
+  .links a{color:#58a6ff;text-decoration:none}
 
-  .status { font-size: 12px; text-align: center; margin: 10px 0; min-height: 18px; }
-  .status.loading { color: #d29922; }
-  .status.ok { color: #3fb950; }
-  .status.err { color: #f85149; }
-  .updated { font-size: 11px; color: #6e7681; text-align: center; margin-top: 16px; }
-  .disclaimer { font-size: 11px; color: #4d545c; text-align: center; margin-top: 8px; line-height: 1.5; }
+  .status{font-size:12px;text-align:center;margin:10px 0;min-height:18px}
+  .status.loading{color:#d29922}.status.ok{color:#3fb950}.status.err{color:#f85149}
+  .updated{font-size:11px;color:#6e7681;text-align:center;margin-top:14px}
+  .disclaimer{font-size:10.5px;color:#4d545c;text-align:center;margin-top:8px;line-height:1.5}
+
+  .logbox{background:#161b22;border:1px solid #21262d;border-radius:11px;padding:.85rem 1rem;margin-bottom:9px}
+  .logbox textarea{width:100%;min-height:90px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:8px;font-size:12px;font-family:monospace;resize:vertical}
+  .logbox textarea:focus{outline:none;border-color:#58a6ff}
 </style>
 </head>
 <body>
 <div class="page">
 
   <header>
-    <h1>Metals Macro Monitor — Live</h1>
-    <p>Auto-fetches daily Fed data. Leading signals drive the regime; slow signals confirm.</p>
+    <h1>Metals Macro Monitor <span style="font-size:12px;color:#6e7681">v2</span></h1>
+    <p>Rates · curve · dollar · breakevens · stress — with rate-of-change and expectations. Auto-fetched daily from FRED.</p>
   </header>
 
-  <!-- WORKER URL SETUP -->
   <div class="keybar">
     <div class="row">
       <div class="col">
-        <label>Your Cloudflare Worker URL (your key stays hidden inside it)</label>
+        <label>Your Cloudflare Worker URL</label>
         <input type="text" id="workerurl" placeholder="https://fred-proxy.YOURNAME.workers.dev">
       </div>
-      <button class="btn" onclick="saveAndFetch()">Save &amp; Fetch</button>
+      <button class="btn" onclick="fetchAll()">Save &amp; Fetch</button>
       <button class="btn btn-sec" onclick="fetchAll()">Refresh now</button>
     </div>
-    <div class="keyhint">This points at the Worker you deployed (see README). The Worker holds your FRED key as a secret — nothing sensitive lives in this page. To bake the URL in permanently, set <code>WORKER_URL</code> in the script below.</div>
+    <div class="keyhint">Bake it in permanently by setting <code>WORKER_URL</code> in the script. Redeploy your Worker with the new <code>worker.js</code> v2 first (adds curve/dollar/stress series).</div>
   </div>
 
   <div class="status" id="status"></div>
 
-  <!-- MASTER SIGNAL -->
   <div class="master-signal" id="master">
     <div class="master-label">Composite Regime Signal</div>
     <div class="master-verdict" id="master-verdict">—</div>
-    <div class="master-sub" id="master-sub">Enter your Worker URL to auto-load</div>
+    <div class="master-sub" id="master-sub">Enter Worker URL to auto-load</div>
+    <div class="master-detail" id="master-detail"></div>
   </div>
 
-  <!-- DAILY BAND -->
+  <!-- ============ RATES & CURVE (AUTO) ============ -->
   <div class="freq-band">
-    <div class="band-title"><span class="band-pill">DAILY · auto-fetched from FRED</span> Leading signals</div>
+    <div class="band-title"><span class="band-pill">DAILY AUTO · rates &amp; curve</span> the core regime engine</div>
+    <div class="grid">
 
-    <!-- Real yield -->
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-name">10Y Real Yield (TIPS) <span class="auto-tag">AUTO</span></div>
-          <div class="card-id">FRED: DFII10</div>
-        </div>
-        <div class="light grey" id="light-real"></div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">10Y Real Yield <span class="tag auto-tag">AUTO</span></div><div class="card-id">DFII10 · master switch</div></div><div class="light grey" id="L-real"></div></div>
+        <div class="valrow"><span class="live-val" id="V-real">—<span class="unit">%</span></span><span class="chg" id="C-real"></span></div>
+        <div class="live-date" id="D-real"></div>
+        <div class="tbar"><div class="ttrack"><div class="tzones"><div class="zg" style="width:40%"></div><div class="za" style="width:25%"></div><div class="zr" style="width:35%"></div></div><div class="tmark" id="M-real" style="left:50%"></div></div><div class="tlabels"><span>0.5</span><span>1.5</span><span>2.0</span><span>2.6+</span></div></div>
+        <div class="sig"><strong>Below 1.5 supportive, below 1.0 strongly bullish, above 2.0 headwind.</strong> Direction &gt; level — a sustained roll-over is the trigger.</div>
       </div>
-      <div class="live-val" id="val-real">—<span class="unit">%</span></div>
-      <div class="live-date" id="date-real"></div>
-      <div class="threshold-bar">
-        <div class="threshold-track">
-          <div class="threshold-zones"><div class="zone-green" style="width:40%"></div><div class="zone-amber" style="width:25%"></div><div class="zone-red" style="width:35%"></div></div>
-          <div class="threshold-marker" id="mark-real" style="left:50%"></div>
-        </div>
-        <div class="threshold-labels"><span>0.5%</span><span>1.5%</span><span>2.0%</span><span>2.6%+</span></div>
-      </div>
-      <div class="signal-text"><strong>The master switch.</strong> Below ~1.5% supportive, below 1.0% strongly bullish, above 2.0% structural headwind. The sustained roll-over is the bottom trigger.</div>
-    </div>
 
-    <!-- 2Y -->
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-name">2Y Treasury Yield <span class="auto-tag">AUTO</span></div>
-          <div class="card-id">FRED: DGS2 · Fed-hike proxy</div>
-        </div>
-        <div class="light grey" id="light-2y"></div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">2Y-30Y Curve <span class="tag auto-tag">AUTO</span></div><div class="card-id">DGS2 − DGS30 · Fed regime</div></div><div class="light grey" id="L-curve"></div></div>
+        <div class="valrow"><span class="live-val" id="V-curve">—<span class="unit">bp</span></span><span class="chg" id="C-curve"></span></div>
+        <div class="live-date" id="D-curve"></div>
+        <div class="tbar"><div class="ttrack"><div class="tzones"><div class="zg" style="width:45%"></div><div class="za" style="width:25%"></div><div class="zr" style="width:30%"></div></div><div class="tmark" id="M-curve" style="left:50%"></div></div><div class="tlabels"><span>steep −140</span><span>−110</span><span>−80</span><span>flat 0+</span></div></div>
+        <div class="sig"><strong>The 2026 gold driver.</strong> Flattening (toward 0) from a rising 2Y = hawkish Fed = gold headwind. Re-steepening = front-end easing = bullish. This is what the Warsh transition moved.</div>
       </div>
-      <div class="live-val" id="val-2y">—<span class="unit">%</span></div>
-      <div class="live-date" id="date-2y"></div>
-      <div class="threshold-bar">
-        <div class="threshold-track">
-          <div class="threshold-zones"><div class="zone-green" style="width:45%"></div><div class="zone-amber" style="width:20%"></div><div class="zone-red" style="width:35%"></div></div>
-          <div class="threshold-marker" id="mark-2y" style="left:50%"></div>
-        </div>
-        <div class="threshold-labels"><span>3.8%</span><span>4.2%</span><span>4.4%</span><span>4.6%+</span></div>
-      </div>
-      <div class="signal-text"><strong>Purest read on Fed-hike expectations.</strong> When it peaks and rolls over, the hike narrative is breaking — that front-runs the metals bottom.</div>
-    </div>
 
-    <!-- 10Y nominal (context) -->
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-name">10Y Nominal Yield <span class="auto-tag">AUTO</span></div>
-          <div class="card-id">FRED: DGS10 · context</div>
-        </div>
-        <div class="light grey" id="light-10y"></div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">2Y Treasury <span class="tag auto-tag">AUTO</span></div><div class="card-id">DGS2 · hike proxy</div></div><div class="light grey" id="L-2y"></div></div>
+        <div class="valrow"><span class="live-val" id="V-2y">—<span class="unit">%</span></span><span class="chg" id="C-2y"></span></div>
+        <div class="live-date" id="D-2y"></div>
+        <div class="tbar"><div class="ttrack"><div class="tzones"><div class="zg" style="width:45%"></div><div class="za" style="width:20%"></div><div class="zr" style="width:35%"></div></div><div class="tmark" id="M-2y" style="left:50%"></div></div><div class="tlabels"><span>3.8</span><span>4.2</span><span>4.4</span><span>4.6+</span></div></div>
+        <div class="sig"><strong>Purest read on hike expectations.</strong> Peak-and-roll front-runs the metals bottom. Rising = more hikes priced.</div>
       </div>
-      <div class="live-val" id="val-10y">—<span class="unit">%</span></div>
-      <div class="live-date" id="date-10y"></div>
-      <div class="signal-text">Context only — not scored. Watch the 10Y vs the 2Y (curve) and vs the real yield (implied breakeven inflation).</div>
-    </div>
 
-    <!-- Breakeven inflation (derived) -->
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-name">10Y Breakeven Inflation <span class="auto-tag">AUTO</span></div>
-          <div class="card-id">FRED: T10YIE</div>
-        </div>
-        <div class="light grey" id="light-be"></div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">Dollar (Broad USD) <span class="tag auto-tag">AUTO</span></div><div class="card-id">DTWEXBGS · DXY proxy</div></div><div class="light grey" id="L-dxy"></div></div>
+        <div class="valrow"><span class="live-val" id="V-dxy">—</span><span class="chg" id="C-dxy"></span></div>
+        <div class="live-date" id="D-dxy"></div>
+        <div class="sig"><strong>Scored on direction, not level</strong> (this index isn't on the ICE-DXY scale). Falling dollar = metals tailwind. Gold tracked this near-perfectly through 2026.</div>
       </div>
-      <div class="live-val" id="val-be">—<span class="unit">%</span></div>
-      <div class="live-date" id="date-be"></div>
-      <div class="signal-text"><strong>Rising breakeven + falling real yield = the ideal metals setup.</strong> If inflation expectations rise while real yields fall, that's the most reliable gold tailwind.</div>
-    </div>
 
-    <!-- Gold/Silver ratio (manual) -->
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-name">Gold / Silver Ratio <span class="manual-tag">MANUAL</span></div>
-          <div class="card-id">enter spot prices</div>
-        </div>
-        <div class="light grey" id="light-ratio"></div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">10Y Nominal <span class="tag ctx-tag">CTX</span></div><div class="card-id">DGS10 · context</div></div><div class="light grey" id="L-10y"></div></div>
+        <div class="valrow"><span class="live-val" id="V-10y">—<span class="unit">%</span></span><span class="chg" id="C-10y"></span></div>
+        <div class="live-date" id="D-10y"></div>
+        <div class="sig">Context. 10Y minus real = implied breakeven. 10Y minus 2Y = the other curve read.</div>
       </div>
-      <div class="input-row"><label>Gold spot $</label><input type="number" id="in-gold" step="1" placeholder="4016"></div>
-      <div class="input-row"><label>Silver spot $</label><input type="number" id="in-silver" step="0.01" placeholder="61"></div>
-      <div class="input-row"><label>Ratio</label><span class="live-val" id="ratio-val" style="font-size:18px">—</span></div>
-      <div class="threshold-bar">
-        <div class="threshold-track">
-          <div class="threshold-zones"><div class="zone-green" style="width:45%"></div><div class="zone-amber" style="width:20%"></div><div class="zone-red" style="width:35%"></div></div>
-          <div class="threshold-marker" id="mark-ratio" style="left:50%"></div>
-        </div>
-        <div class="threshold-labels"><span>&lt;55</span><span>60</span><span>65</span><span>75+</span></div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">10Y Breakeven <span class="tag auto-tag">AUTO</span></div><div class="card-id">T10YIE · inflation exp</div></div><div class="light grey" id="L-be"></div></div>
+        <div class="valrow"><span class="live-val" id="V-be">—<span class="unit">%</span></span><span class="chg" id="C-be"></span></div>
+        <div class="live-date" id="D-be"></div>
+        <div class="sig"><strong>Rising breakeven + falling real yield = ideal setup.</strong> Scored on direction: rising = bullish for metals.</div>
       </div>
-      <div class="signal-text"><strong>Best internal bottom-confirm.</strong> Falling ratio = silver outperforming = risk appetite returning. Below ~60 with silver leading confirms the uptrend handoff. (Spot isn't free on FRED, so enter manually or wire your own feed.)</div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">5Y Real Yield <span class="tag ctx-tag">CTX</span></div><div class="card-id">DFII5 · belly</div></div><div class="light grey" id="L-5yr"></div></div>
+        <div class="valrow"><span class="live-val" id="V-5yr">—<span class="unit">%</span></span><span class="chg" id="C-5yr"></span></div>
+        <div class="live-date" id="D-5yr"></div>
+        <div class="sig">The belly often shows the Fed-path read cleanest. Watch vs the 10Y real — divergence flags front- vs long-end driven moves.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">Financial Stress <span class="tag auto-tag">AUTO</span></div><div class="card-id">STLFSI4 · weekly</div></div><div class="light grey" id="L-stress"></div></div>
+        <div class="valrow"><span class="live-val" id="V-stress">—</span><span class="chg" id="C-stress"></span></div>
+        <div class="live-date" id="D-stress"></div>
+        <div class="sig"><strong>Stress spiking forces the Fed dovish.</strong> Above 0 = above-average stress. A blowout while metals base = the risk-off catalyst that breaks the rate regime.</div>
+      </div>
+
     </div>
   </div>
 
-  <!-- SLOW BAND -->
+  <!-- ============ GLOBAL MACRO (carry, China, debt-stress) ============ -->
   <div class="freq-band">
-    <div class="band-title"><span class="band-pill slow">MONTHLY / QUARTERLY · manual confirmation</span></div>
+    <div class="band-title"><span class="band-pill">DAILY AUTO · global macro</span> the forces that can break the US rate regime</div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">USD / JPY <span class="tag auto-tag">AUTO</span></div><div class="card-id">DEXJPUS · carry + intervention watch</div></div><div class="light grey" id="L-jpy"></div></div>
+        <div class="valrow"><span class="live-val" id="V-jpy">—</span><span class="chg" id="C-jpy"></span></div>
+        <div class="live-date" id="D-jpy"></div>
+        <div class="tbar"><div class="ttrack"><div class="tzones"><div class="zg" style="width:50%"></div><div class="za" style="width:25%"></div><div class="zr" style="width:25%"></div></div><div class="tmark" id="M-jpy" style="left:50%"></div></div><div class="tlabels"><span>150 stable</span><span>158</span><span>162</span><span>165+ intervention</span></div></div>
+        <div class="sig"><strong>The carry-trade pressure gauge.</strong> Above ~162 = intervention imminent. MOF intervention = Japan SELLS US Treasuries to buy yen = US yields UP, dollar down. That's the trigger that can flip the whole metals regime.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">US − Japan 10Y Gap <span class="tag manual-tag">MANUAL</span></div><div class="card-id">carry-trade engine</div></div><div class="light grey" id="L-usjp"></div></div>
+        <div class="input-row"><label>US 10Y %</label><input type="number" id="in-us10" step="0.01" placeholder="4.38"></div>
+        <div class="input-row"><label>Japan 10Y %</label><input type="number" id="in-jp10" step="0.01" placeholder="2.64"></div>
+        <div class="input-row"><label>Gap</label><span class="live-val" id="usjp-val" style="font-size:16px">—<span class="unit">bp</span></span></div>
+        <div class="sig"><strong>Compressing gap = carry unwind risk.</strong> US yields down + Japan yields up narrows it from both ends. A fast narrowing unwinds crowded yen shorts → risk-off → metals flush then reverse. (Japan 10Y is monthly on FRED, so enter the daily value here.)</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">USD / CNY <span class="tag auto-tag">AUTO</span></div><div class="card-id">DEXCHUS · yuan stability</div></div><div class="light grey" id="L-cny"></div></div>
+        <div class="valrow"><span class="live-val" id="V-cny">—</span><span class="chg" id="C-cny"></span></div>
+        <div class="live-date" id="D-cny"></div>
+        <div class="sig"><strong>Yuan devaluation = major gold catalyst.</strong> A weakening yuan (rising USD/CNY) drives Chinese capital into gold as a flight asset — the physical-demand engine. Scored on direction: rising USD/CNY = capital-flight gold bid building.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">China 10Y Yield <span class="tag manual-tag">MANUAL</span></div><div class="card-id">deflation / stress gauge</div></div><div class="light grey" id="L-cn10"></div></div>
+        <div class="input-row"><label>China 10Y %</label><input type="number" id="in-cn10" step="0.01" placeholder="1.72"></div>
+        <div class="sig"><strong>Record-low Chinese yields = domestic deflation/stress</strong> = capital seeking gold. ~1.7% is near historic lows. Falling further = more domestic gold bid. (Monthly on FRED — enter daily value.)</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">US 10Y Term Premium <span class="tag auto-tag">AUTO</span></div><div class="card-id">THREEFYTP10 · debt-stress</div></div><div class="light grey" id="L-tp"></div></div>
+        <div class="valrow"><span class="live-val" id="V-tp">—<span class="unit">%</span></span><span class="chg" id="C-tp"></span></div>
+        <div class="live-date" id="D-tp"></div>
+        <div class="sig"><strong>The de-recycling thesis, measured.</strong> Rising term premium = market demands more to hold US duration = funding stress from that X-post loop straining. Rising = structurally gold-positive (sovereign distrust of Treasuries).</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">HY Credit Spread <span class="tag auto-tag">AUTO</span></div><div class="card-id">BAMLH0A0HYM2 · risk-off</div></div><div class="light grey" id="L-hy"></div></div>
+        <div class="valrow"><span class="live-val" id="V-hy">—<span class="unit">%</span></span><span class="chg" id="C-hy"></span></div>
+        <div class="live-date" id="D-hy"></div>
+        <div class="sig"><strong>Blowout = stress that forces the Fed dovish.</strong> Widening spreads while metals base = the risk-off catalyst. Distinguishes orderly repricing from a liquidity event.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ PRICED-IN / EXPECTATIONS (MANUAL) ============ -->
+  <div class="freq-band">
+    <div class="band-title"><span class="band-pill manual">MANUAL · what's priced in</span> the channel that made today a rally not a crash</div>
 
     <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-name">Foreign Official Treasury Holdings <span class="manual-tag">MANUAL</span></div>
-          <div class="card-id">Treasury TIC — monthly, ~6wk lag</div>
-        </div>
-        <div class="light grey" id="light-tic"></div>
-      </div>
-      <div class="input-row"><label>Direction</label>
-        <select id="in-tic"><option value="">— select —</option><option value="green">Share rising / stable</option><option value="amber">Share slowly falling</option><option value="red">Share falling fast</option></select>
-      </div>
-      <div class="signal-text">Falling foreign share = the de-recycling thesis going live. Confirms the daily band, doesn't trigger.</div>
-      <div class="links">Source: <a href="https://ticdata.treasury.gov/" target="_blank">ticdata.treasury.gov</a></div>
+      <div class="card-head"><div><div class="card-name">CME FedWatch — Hike Odds <span class="tag manual-tag">MANUAL</span></div><div class="card-id">next meeting · % priced</div></div><div class="light grey" id="L-fw"></div></div>
+      <div class="input-row"><label>Today %</label><input type="number" id="in-fw" step="1" placeholder="80"></div>
+      <div class="input-row"><label>Prev %</label><input type="number" id="in-fwprev" step="1" placeholder="85"></div>
+      <div class="tbar"><div class="ttrack"><div class="tzones"><div class="zr" style="width:45%"></div><div class="za" style="width:20%"></div><div class="zg" style="width:35%"></div></div><div class="tmark" id="M-fw" style="left:50%"></div></div><div class="tlabels"><span>90%+ hawkish</span><span>70</span><span>55</span><span>&lt;40 dovish</span></div></div>
+      <div class="sig"><strong>The positioning gap.</strong> A hot print the market already feared causes relief; the surprise is what moves price. Falling odds (e.g. 85→80) = easing = metals-supportive even on a hot number. Enter both to score the direction.</div>
+      <div class="links">Source: <a href="https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html" target="_blank">CME FedWatch Tool</a></div>
     </div>
 
     <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="card-name">Central Bank Gold % of Reserves <span class="manual-tag">MANUAL</span></div>
-          <div class="card-id">WGC — quarterly</div>
-        </div>
-        <div class="light grey" id="light-cbgold"></div>
+      <div class="card-head"><div><div class="card-name">Next Release — Consensus vs Actual <span class="tag manual-tag">MANUAL</span></div><div class="card-id">log the forecast BEFORE the print</div></div><div class="light grey" id="L-exp"></div></div>
+      <div class="input-row"><label>Indicator</label><input type="text" id="in-expname" placeholder="Core PCE" style="width:120px"></div>
+      <div class="input-row"><label>Consensus</label><input type="number" id="in-expcons" step="0.1" placeholder="3.4"></div>
+      <div class="input-row"><label>Actual</label><input type="number" id="in-expact" step="0.1" placeholder="3.4"></div>
+      <div class="sig"><strong>Hotter-than-consensus = hawkish surprise = metals down. In-line or softer = relief.</strong> The number alone is meaningless; the gap vs consensus is the signal. Green = actual ≤ consensus.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><div class="card-name">Gold / Silver Ratio <span class="tag manual-tag">MANUAL</span></div><div class="card-id">internal confirm</div></div><div class="light grey" id="L-ratio"></div></div>
+      <div class="input-row"><label>Gold $</label><input type="number" id="in-gold" step="1" placeholder="4014"></div>
+      <div class="input-row"><label>Silver $</label><input type="number" id="in-silver" step="0.01" placeholder="58.1"></div>
+      <div class="input-row"><label>Ratio</label><span class="live-val" id="ratio-val" style="font-size:17px">—</span></div>
+      <div class="tbar"><div class="ttrack"><div class="tzones"><div class="zg" style="width:45%"></div><div class="za" style="width:20%"></div><div class="zr" style="width:35%"></div></div><div class="tmark" id="M-ratio" style="left:50%"></div></div><div class="tlabels"><span>&lt;55</span><span>60</span><span>65</span><span>75+</span></div></div>
+      <div class="sig"><strong>Falling ratio = silver leading = risk appetite returning.</strong> Below ~60 with silver outperforming confirms the uptrend handoff. Widening = rate-force dominant.</div>
+    </div>
+  </div>
+
+  <!-- ============ SLOW CONFIRMERS ============ -->
+  <div class="freq-band">
+    <div class="band-title"><span class="band-pill slow">MONTHLY / QUARTERLY · structural confirm</span></div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">Foreign Treasury Holdings <span class="tag manual-tag">MANUAL</span></div><div class="card-id">TIC · monthly</div></div><div class="light grey" id="L-tic"></div></div>
+        <div class="input-row"><label>Direction</label><select id="in-tic" style="width:auto"><option value="">— select —</option><option value="green">Share rising/stable</option><option value="amber">Slowly falling</option><option value="red">Falling fast</option></select></div>
+        <div class="sig">Falling foreign share = de-recycling thesis going live. Confirms, doesn't trigger.</div>
+        <div class="links"><a href="https://ticdata.treasury.gov/" target="_blank">ticdata.treasury.gov</a></div>
       </div>
-      <div class="input-row"><label>Direction</label>
-        <select id="in-cbgold"><option value="">— select —</option><option value="green">Accumulation accelerating</option><option value="amber">Accumulation steady</option><option value="red">Accumulation slowing</option></select>
+      <div class="card">
+        <div class="card-head"><div><div class="card-name">Central Bank Gold % <span class="tag manual-tag">MANUAL</span></div><div class="card-id">WGC · quarterly</div></div><div class="light grey" id="L-cb"></div></div>
+        <div class="input-row"><label>Direction</label><select id="in-cb" style="width:auto"><option value="">— select —</option><option value="green">Accelerating</option><option value="amber">Steady</option><option value="red">Slowing</option></select></div>
+        <div class="sig">Sustained accumulation = structural floor under gold, independent of rates.</div>
+        <div class="links"><a href="https://www.gold.org/goldhub" target="_blank">gold.org/goldhub</a></div>
       </div>
-      <div class="signal-text">Sustained accumulation = structural floor under gold (sovereign bid), independent of rates.</div>
-      <div class="links">Source: <a href="https://www.gold.org/goldhub" target="_blank">gold.org/goldhub</a></div>
+    </div>
+  </div>
+
+  <!-- ============ REGIME / EVENT LOG ============ -->
+  <div class="freq-band">
+    <div class="band-title"><span class="band-pill manual">EVENT LOG</span> regime inflection points (the model's memory)</div>
+    <div class="logbox">
+      <textarea id="eventlog" placeholder="Log regime-change events with date + readings, e.g.:
+17-Jun-26  Warsh first speech (hawkish)  2Y 4.20  curve -0.73  gold 4210  DXY 100.09
+25-Jun-26  May PCE 4.1% in-line; hike odds 85->80; gold +0.7% relief bounce
+..."></textarea>
+      <div class="sig">The dashboard scores today's levels; this is where you record WHY the regime shifted. Paste tables like the Warsh transition here. (Saved in this browser session only.)</div>
     </div>
   </div>
 
   <div class="updated" id="updated"></div>
-  <div class="disclaimer">For reference only — not investment advice. Data via FRED (St. Louis Fed). Daily series update each business day with a 1-day lag.</div>
+  <div class="disclaimer">For reference only — not investment advice. Data via FRED (St. Louis Fed), daily series ~1-day lag. FedWatch, spot prices, consensus, and slow series are manual where no free real-time API exists.</div>
 
 </div>
 
 <script>
-// ---- thresholds ----
+var WORKER_URL = ""; // bake in: "https://fred-proxy.yourname.workers.dev"
+
+function getWorker(){ var v=document.getElementById('workerurl').value.trim(); return v||WORKER_URL; }
+function setStatus(m,c){ var s=document.getElementById('status'); s.textContent=m; s.className='status '+(c||''); }
+function setLight(id,c){ document.getElementById(id).className='light '+c; }
+function markerPos(v,min,max){ if(isNaN(v))return 50; var p=(v-min)/(max-min)*100; return Math.min(98,Math.max(2,p)); }
+
+// fetch a series WITH history (limit) so we can compute rate-of-change
+function fredSeries(series, worker, limit){
+  var base=worker.replace(/\/+$/,'');
+  var url=base+'/?series='+encodeURIComponent(series)+'&limit='+(limit||10);
+  return fetch(url).then(function(r){ if(!r.ok)throw new Error('Worker '+r.status); return r.json(); })
+   .then(function(j){
+      if(j.error)throw new Error(j.error);
+      var obs=(j.observations||[]).filter(function(o){return o.value!=='.'&&o.value!=='';})
+        .map(function(o){return {value:parseFloat(o.value),date:o.date};});
+      if(!obs.length)throw new Error('no obs '+series);
+      return obs; // desc order: obs[0] latest
+   });
+}
+
+function fmtChg(delta, unit){
+  if(isNaN(delta))return '';
+  var sign=delta>0?'+':'';
+  var cls=Math.abs(delta)<0.005?'flat':(delta>0?'up':'down');
+  // arrow reflects DIRECTION, color meaning is set per-card by caller
+  var arrow=Math.abs(delta)<0.005?'→':(delta>0?'▲':'▼');
+  return {txt:arrow+' '+sign+delta.toFixed(2)+(unit||''), cls:cls};
+}
+
+// zone classifiers (level-based)
 function zReal(v){ if(isNaN(v))return'grey'; if(v<1.5)return'green'; if(v<2.0)return'amber'; return'red'; }
 function z2y(v){ if(isNaN(v))return'grey'; if(v<4.2)return'green'; if(v<4.4)return'amber'; return'red'; }
+function zCurve(v){ // v in bp. Jan started -139 (steep/dovish), now -71 (flattened/hawkish toward 0).
+  // more negative = green (steep, dovish-friendly); toward 0 = red (flat, hawkish regime)
+  if(isNaN(v))return'grey'; if(v<-110)return'green'; if(v<-80)return'amber'; return'red'; }
 function zRatio(v){ if(isNaN(v)||!isFinite(v))return'grey'; if(v<60)return'green'; if(v<65)return'amber'; return'red'; }
-var SCORE = {green:1, amber:0, red:-1};
+function zFW(v){ if(isNaN(v))return'grey'; if(v<40)return'green'; if(v<55)return'amber'; return'red'; }
+function zStress(v){ if(isNaN(v))return'grey'; if(v<-0.3)return'green'; if(v<0.3)return'amber'; return'red'; }
+function zJpy(v){ if(isNaN(v))return'grey'; if(v<158)return'green'; if(v<162)return'amber'; return'red'; }
+function zHY(v){ if(isNaN(v))return'grey'; if(v<3.5)return'green'; if(v<5.0)return'amber'; return'red'; }
+// direction-scored (breakeven rising=green; dollar falling=green)
+function zDirGood(delta){ if(isNaN(delta))return'grey'; if(delta>0.01)return'green'; if(delta<-0.01)return'red'; return'amber'; }
+function zDirBad(delta){ if(isNaN(delta))return'grey'; if(delta<-0.01)return'green'; if(delta>0.01)return'red'; return'amber'; }
 
-function markerPos(v,min,max){ if(isNaN(v))return 50; var p=(v-min)/(max-min)*100; return Math.min(98,Math.max(2,p)); }
-function setLight(id,c){ document.getElementById(id).className='light '+c; }
+var SCORE={green:1,amber:0,red:-1};
+var lastZones={};
 
-// ---- Worker proxy fetch ----
-// Optionally hard-code your Worker URL here to skip entering it each time:
-var WORKER_URL = "https://fred-proxy.aascagarwal.workers.dev";  // e.g. "https://fred-proxy.yourname.workers.dev"
-
-function getWorker(){
-  var v = document.getElementById('workerurl').value.trim();
-  return v || WORKER_URL;
-}
-
-// Calls your Worker, which proxies FRED and returns the same JSON shape.
-function fredLatest(series, worker){
-  var base = worker.replace(/\/+$/,''); // strip trailing slash
-  var url = base + '/?series=' + encodeURIComponent(series);
-  return fetch(url).then(function(r){
-    if(!r.ok) throw new Error('Worker returned ' + r.status);
-    return r.json();
-  }).then(function(j){
-    if(j.error) throw new Error(j.error);
-    var obs = j.observations || [];
-    for(var i=0;i<obs.length;i++){
-      if(obs[i].value !== '.' && obs[i].value !== '' ){
-        return { value: parseFloat(obs[i].value), date: obs[i].date };
-      }
-    }
-    throw new Error('no valid obs for ' + series);
-  });
-}
-
-function saveAndFetch(){ fetchAll(); }
-
-function setStatus(msg, cls){
-  var s = document.getElementById('status');
-  s.textContent = msg; s.className = 'status ' + (cls||'');
+function applyChg(id, delta, unit, goodIsUp){
+  var c=fmtChg(delta,unit); var el=document.getElementById(id);
+  if(!c){el.textContent='';return;}
+  // recolor by whether the move is good/bad for metals
+  var good = goodIsUp ? (delta>0) : (delta<0);
+  var cls = Math.abs(delta)<0.005?'flat':(good?'up':'down');
+  el.textContent=c.txt; el.className='chg '+cls;
 }
 
 function fetchAll(){
-  var worker = getWorker();
-  if(!worker){ setStatus('Enter your Cloudflare Worker URL first.', 'err'); return; }
-  setStatus('Fetching latest data via your Worker…', 'loading');
+  var w=getWorker();
+  if(!w){ setStatus('Enter your Worker URL first.','err'); return; }
+  setStatus('Fetching rates, curve, dollar, stress from FRED…','loading');
 
-  var jobs = [
-    fredLatest('DFII10', worker).then(function(d){
-      document.getElementById('val-real').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
-      document.getElementById('date-real').textContent = 'as of ' + d.date;
-      setLight('light-real', zReal(d.value));
-      document.getElementById('mark-real').style.left = markerPos(d.value,0.5,2.6)+'%';
-      return zReal(d.value);
-    }),
-    fredLatest('DGS2', worker).then(function(d){
-      document.getElementById('val-2y').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
-      document.getElementById('date-2y').textContent = 'as of ' + d.date;
-      setLight('light-2y', z2y(d.value));
-      document.getElementById('mark-2y').style.left = markerPos(d.value,3.8,4.6)+'%';
-      return z2y(d.value);
-    }),
-    fredLatest('DGS10', worker).then(function(d){
-      document.getElementById('val-10y').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
-      document.getElementById('date-10y').textContent = 'as of ' + d.date;
-      setLight('light-10y','grey');
-      return null;
-    }),
-    fredLatest('T10YIE', worker).then(function(d){
-      document.getElementById('val-be').innerHTML = d.value.toFixed(2) + '<span class="unit">%</span>';
-      document.getElementById('date-be').textContent = 'as of ' + d.date;
-      setLight('light-be','grey');
-      return null;
-    })
-  ];
+  var jobs=[];
 
-  Promise.allSettled(jobs).then(function(results){
-    var anyErr = results.some(function(r){ return r.status === 'rejected'; });
-    if(anyErr){
-      setStatus('Some series failed — check your Worker URL is correct and deployed.', 'err');
-    } else {
-      setStatus('Live data loaded.', 'ok');
-      document.getElementById('updated').textContent = 'Last fetched: ' + new Date().toLocaleString();
-    }
+  // 10Y real
+  jobs.push(fredSeries('DFII10',w,10).then(function(o){
+    var v=o[0].value, d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-real').innerHTML=v.toFixed(2)+'<span class="unit">%</span>';
+    document.getElementById('D-real').textContent='as of '+o[0].date;
+    setLight('L-real',zReal(v)); document.getElementById('M-real').style.left=markerPos(v,0.5,2.6)+'%';
+    applyChg('C-real',d,'',false); // falling real yield = good
+    return {key:'real',zone:zReal(v)};
+  }));
+
+  // curve: need DGS2 and DGS30
+  var p2=fredSeries('DGS2',w,10), p30=fredSeries('DGS30',w,10);
+  jobs.push(Promise.all([p2,p30]).then(function(a){
+    var two=a[0], thirty=a[1];
+    var v2=two[0].value, v30=thirty[0].value;
+    // 2Y card
+    var d2=v2-(two[1]?two[1].value:NaN);
+    document.getElementById('V-2y').innerHTML=v2.toFixed(2)+'<span class="unit">%</span>';
+    document.getElementById('D-2y').textContent='as of '+two[0].date;
+    setLight('L-2y',z2y(v2)); document.getElementById('M-2y').style.left=markerPos(v2,3.8,4.6)+'%';
+    applyChg('C-2y',d2,'',false); // rising 2Y = bad
+    // curve = 2Y - 30Y (in their table convention), express in bp
+    var curveNow=(v2-v30)*100;
+    var v2p=two[1]?two[1].value:NaN, v30p=thirty[1]?thirty[1].value:NaN;
+    var curvePrev=(v2p-v30p)*100;
+    var dCurve=curveNow-curvePrev;
+    document.getElementById('V-curve').innerHTML=curveNow.toFixed(0)+'<span class="unit">bp</span>';
+    document.getElementById('D-curve').textContent='as of '+two[0].date;
+    setLight('L-curve',zCurve(curveNow)); document.getElementById('M-curve').style.left=markerPos(curveNow,-140,0)+'%';
+    // steepening (more negative) = good for metals
+    applyChg('C-curve',dCurve,'bp',false);
+    return [{key:'2y',zone:z2y(v2)},{key:'curve',zone:zCurve(curveNow)}];
+  }));
+
+  // 30Y context already fetched above; 10Y nominal
+  jobs.push(fredSeries('DGS10',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-10y').innerHTML=v.toFixed(2)+'<span class="unit">%</span>';
+    document.getElementById('D-10y').textContent='as of '+o[0].date;
+    setLight('L-10y','grey'); applyChg('C-10y',d,'',false);
+    return null;
+  }));
+
+  // breakeven 10Y (rising = good)
+  jobs.push(fredSeries('T10YIE',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-be').innerHTML=v.toFixed(2)+'<span class="unit">%</span>';
+    document.getElementById('D-be').textContent='as of '+o[0].date;
+    setLight('L-be',zDirGood(d)); applyChg('C-be',d,'',true);
+    return {key:'be',zone:zDirGood(d)};
+  }));
+
+  // dollar (falling = good) — scored on direction
+  jobs.push(fredSeries('DTWEXBGS',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-dxy').textContent=v.toFixed(2);
+    document.getElementById('D-dxy').textContent='as of '+o[0].date;
+    setLight('L-dxy',zDirBad(d)); applyChg('C-dxy',d,'',false);
+    return {key:'dxy',zone:zDirBad(d)};
+  }));
+
+  // 5Y real (context)
+  jobs.push(fredSeries('DFII5',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-5yr').innerHTML=v.toFixed(2)+'<span class="unit">%</span>';
+    document.getElementById('D-5yr').textContent='as of '+o[0].date;
+    setLight('L-5yr','grey'); applyChg('C-5yr',d,'',false);
+    return null;
+  }));
+
+  // financial stress
+  jobs.push(fredSeries('STLFSI4',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-stress').textContent=v.toFixed(2);
+    document.getElementById('D-stress').textContent='as of '+o[0].date;
+    setLight('L-stress',zStress(v)); applyChg('C-stress',d,'',true); // rising stress can be metals-positive (forces dovish) but flagged amber/red as risk
+    return {key:'stress',zone:zStress(v)};
+  }));
+
+  // --- GLOBAL MACRO ---
+  jobs.push(fredSeries('DEXJPUS',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-jpy').textContent=v.toFixed(2);
+    document.getElementById('D-jpy').textContent='as of '+o[0].date;
+    setLight('L-jpy',zJpy(v)); document.getElementById('M-jpy').style.left=markerPos(v,150,165)+'%';
+    applyChg('C-jpy',d,'',false);
+    if(!document.getElementById('in-us10').value){ document.getElementById('in-us10').placeholder=''; }
+    return {key:'jpy',zone:zJpy(v)};
+  }));
+  jobs.push(fredSeries('DEXCHUS',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-cny').textContent=v.toFixed(3);
+    document.getElementById('D-cny').textContent='as of '+o[0].date;
+    setLight('L-cny',zDirGood(d)); applyChg('C-cny',d,'',true);
+    return {key:'cny',zone:zDirGood(d)};
+  }));
+  jobs.push(fredSeries('THREEFYTP10',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-tp').innerHTML=v.toFixed(2)+'<span class="unit">%</span>';
+    document.getElementById('D-tp').textContent='as of '+o[0].date;
+    setLight('L-tp',zDirGood(d)); applyChg('C-tp',d,'',true);
+    return {key:'tp',zone:zDirGood(d)};
+  }));
+  jobs.push(fredSeries('BAMLH0A0HYM2',w,10).then(function(o){
+    var v=o[0].value,d=v-(o[1]?o[1].value:NaN);
+    document.getElementById('V-hy').innerHTML=v.toFixed(2)+'<span class="unit">%</span>';
+    document.getElementById('D-hy').textContent='as of '+o[0].date;
+    setLight('L-hy',zHY(v)); applyChg('C-hy',d,'',false);
+    return {key:'hy',zone:zHY(v)};
+  }));
+
+  Promise.allSettled(jobs).then(function(res){
+    var anyErr=res.some(function(r){return r.status==='rejected';});
+    var zones={};
+    res.forEach(function(r){
+      if(r.status==='fulfilled'&&r.value){
+        if(Array.isArray(r.value)) r.value.forEach(function(z){ if(z&&z.zone&&z.zone!=='grey')zones[z.key]=z.zone; });
+        else if(r.value.zone&&r.value.zone!=='grey') zones[r.value.key]=r.value.zone;
+      }
+    });
+    lastZones=zones;
+    if(anyErr) setStatus('Some series failed — redeploy worker.js v3 (Japan/China/term-premium series) and check the URL.','err');
+    else { setStatus('Live data loaded.','ok'); document.getElementById('updated').textContent='Last fetched: '+new Date().toLocaleString(); }
     computeComposite();
   });
 }
 
 function computeRatio(){
-  var g = parseFloat(document.getElementById('in-gold').value);
-  var s = parseFloat(document.getElementById('in-silver').value);
-  var r = (g && s) ? g/s : NaN;
-  document.getElementById('ratio-val').textContent = isNaN(r) ? '—' : r.toFixed(1);
-  setLight('light-ratio', zRatio(r));
-  document.getElementById('mark-ratio').style.left = markerPos(r,50,75)+'%';
+  var g=parseFloat(document.getElementById('in-gold').value), s=parseFloat(document.getElementById('in-silver').value);
+  var r=(g&&s)?g/s:NaN;
+  document.getElementById('ratio-val').textContent=isNaN(r)?'—':r.toFixed(1);
+  setLight('L-ratio',zRatio(r)); document.getElementById('M-ratio').style.left=markerPos(r,50,75)+'%';
   computeComposite();
+}
+function computeFW(){
+  var v=parseFloat(document.getElementById('in-fw').value), p=parseFloat(document.getElementById('in-fwprev').value);
+  // score blends level and direction: falling odds OR low level = greener
+  var z=zFW(v);
+  if(!isNaN(p)&&!isNaN(v)){ if(v<p-1 && z==='red') z='amber'; if(v<p-1 && z==='amber') z='green'; }
+  setLight('L-fw',isNaN(v)?'grey':z);
+  document.getElementById('M-fw').style.left=markerPos(v,40,95)+'%';
+  computeComposite();
+}
+function computeExp(){
+  var c=parseFloat(document.getElementById('in-expcons').value), a=parseFloat(document.getElementById('in-expact').value);
+  var z='grey';
+  if(!isNaN(c)&&!isNaN(a)){ if(a>c+0.01)z='red'; else if(a<c-0.01)z='green'; else z='amber'; }
+  setLight('L-exp',z); computeComposite();
 }
 
 function computeComposite(){
-  // gather zones from the scored daily lights
-  var ids = ['light-real','light-2y','light-ratio'];
-  var zones = ids.map(function(id){
-    var c = document.getElementById(id).className.replace('light ','').trim();
-    return SCORE.hasOwnProperty(c) ? SCORE[c] : null;
-  }).filter(function(x){ return x !== null; });
+  // core engine zones (rates/curve/dollar) + key manual (ratio, fedwatch, expectations)
+  var ids={
+    'L-real':1.4,'L-curve':1.4,'L-2y':1.0,'L-dxy':1.2,'L-be':0.8,'L-stress':0.6,
+    'L-jpy':1.0,'L-cny':0.8,'L-tp':0.9,'L-hy':0.7,'L-usjp':1.0,'L-cn10':0.6,
+    'L-ratio':1.0,'L-fw':1.2,'L-exp':1.0
+  };
+  var num=0,den=0;
+  Object.keys(ids).forEach(function(id){
+    var c=document.getElementById(id).className.replace('light ','').trim();
+    if(SCORE.hasOwnProperty(c)){ num+=SCORE[c]*ids[id]; den+=ids[id]; }
+  });
+  var master=document.getElementById('master'),verdict=document.getElementById('master-verdict'),
+      sub=document.getElementById('master-sub'),detail=document.getElementById('master-detail');
+  if(den===0){ verdict.textContent='—'; verdict.style.color='#8b949e'; sub.textContent='Load data to compute the regime'; detail.textContent=''; master.style.borderColor='#2a2f3a'; master.style.background='transparent'; return; }
+  var avg=num/den;
+  // build a one-line driver summary
+  function zoneOf(id){var c=document.getElementById(id).className.replace('light ','').trim();return SCORE.hasOwnProperty(c)?c:null;}
+  var drivers=[];
+  if(zoneOf('L-real'))drivers.push('real '+zoneOf('L-real'));
+  if(zoneOf('L-curve'))drivers.push('curve '+zoneOf('L-curve'));
+  if(zoneOf('L-dxy'))drivers.push('USD '+zoneOf('L-dxy'));
+  if(zoneOf('L-fw'))drivers.push('hike-odds '+zoneOf('L-fw'));
+  detail.textContent='Drivers: '+drivers.join(' · ');
 
-  var master = document.getElementById('master');
-  var verdict = document.getElementById('master-verdict');
-  var sub = document.getElementById('master-sub');
-
-  if(zones.length === 0){
-    verdict.textContent='—'; verdict.style.color='#8b949e';
-    sub.textContent='Load data to compute the regime';
-    master.style.borderColor='#2a2f3a'; master.style.background='transparent';
-    return;
-  }
-  var avg = zones.reduce(function(a,b){return a+b;},0)/zones.length;
-  if(avg >= 0.5){
-    verdict.textContent='TAILWIND BUILDING'; verdict.style.color='#3fb950';
-    sub.textContent='Daily signals net positive — regime turning supportive. Scale-in zone if confirmed on weekly closes.';
-    master.style.borderColor='#3fb95066'; master.style.background='#0d1f12';
-  } else if(avg <= -0.4){
-    verdict.textContent='HEADWIND INTACT'; verdict.style.color='#f85149';
-    sub.textContent='Daily signals net negative — rates/dollar still driving metals down. Wait for the rollover.';
-    master.style.borderColor='#f8514966'; master.style.background='#1f0d0d';
-  } else {
-    verdict.textContent='MIXED / TRANSITION'; verdict.style.color='#d29922';
-    sub.textContent='Signals diverging — regime in flux. This is where bottoms form. Real yields are the tiebreaker.';
-    master.style.borderColor='#d2992266'; master.style.background='#1f1a0d';
-  }
+  if(avg>=0.45){ verdict.textContent='TAILWIND BUILDING'; verdict.style.color='#3fb950'; sub.textContent='Weighted signals net positive — regime turning supportive. Scale-in zone if confirmed on weekly closes.'; master.style.borderColor='#3fb95066'; master.style.background='#0d1f12'; }
+  else if(avg<=-0.35){ verdict.textContent='HEADWIND INTACT'; verdict.style.color='#f85149'; sub.textContent='Weighted signals net negative — rates/curve/dollar still driving metals down. Wait for the rollover.'; master.style.borderColor='#f8514966'; master.style.background='#1f0d0d'; }
+  else { verdict.textContent='MIXED / TRANSITION'; verdict.style.color='#d29922'; sub.textContent='Signals diverging — regime in flux. Where bottoms form. Watch real yield + curve direction for the tiebreaker.'; master.style.borderColor='#d2992266'; master.style.background='#1f1a0d'; }
 }
 
 // wire manual inputs
-['in-gold','in-silver'].forEach(function(id){ document.getElementById(id).addEventListener('input', computeRatio); });
-['in-tic','in-cbgold'].forEach(function(id){
-  document.getElementById(id).addEventListener('change', function(){
-    setLight('light-'+id.split('-')[1], this.value || 'grey');
-  });
-});
+function computeUSJP(){
+  var us=parseFloat(document.getElementById('in-us10').value), jp=parseFloat(document.getElementById('in-jp10').value);
+  var gap=(!isNaN(us)&&!isNaN(jp))?(us-jp)*100:NaN;
+  document.getElementById('usjp-val').innerHTML=isNaN(gap)?'—<span class="unit">bp</span>':gap.toFixed(0)+'<span class="unit">bp</span>';
+  // narrow gap = carry-unwind risk. <150bp amber, <120 red(risk). wide = green(stable carry)
+  var z='grey'; if(!isNaN(gap)){ if(gap>180)z='green'; else if(gap>140)z='amber'; else z='red'; }
+  setLight('L-usjp',z); computeComposite();
+}
+function computeCN(){
+  var v=parseFloat(document.getElementById('in-cn10').value);
+  // low/falling Chinese yield = domestic stress = gold bid = green; we score on level
+  var z='grey'; if(!isNaN(v)){ if(v<1.8)z='green'; else if(v<2.4)z='amber'; else z='red'; }
+  setLight('L-cn10',z); computeComposite();
+}
+['in-us10','in-jp10'].forEach(function(id){document.getElementById(id).addEventListener('input',computeUSJP);});
+document.getElementById('in-cn10').addEventListener('input',computeCN);
+['in-gold','in-silver'].forEach(function(id){document.getElementById(id).addEventListener('input',computeRatio);});
+['in-fw','in-fwprev'].forEach(function(id){document.getElementById(id).addEventListener('input',computeFW);});
+['in-expcons','in-expact'].forEach(function(id){document.getElementById(id).addEventListener('input',computeExp);});
+['in-tic','in-cb'].forEach(function(id){document.getElementById(id).addEventListener('change',function(){setLight('L-'+id.split('-')[1],this.value||'grey');computeComposite();});});
 
-// auto-fetch on load if a Worker URL is baked in
-window.addEventListener('load', function(){
-  if(WORKER_URL){ document.getElementById('workerurl').value = WORKER_URL; }
-  if(getWorker()){ fetchAll(); }
+window.addEventListener('load',function(){
+  if(WORKER_URL){document.getElementById('workerurl').value=WORKER_URL;}
+  if(getWorker()){fetchAll();}
 });
 </script>
 </body>
